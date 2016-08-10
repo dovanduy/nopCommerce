@@ -1,0 +1,9 @@
+﻿Group: Payment methods
+FriendlyName: Ideal with Sisow (Dutch)
+SystemName: Payments.Sisow
+Version: 1.10
+SupportedVersions: 3.90
+Author: Sven Ansem
+DisplayOrder: 0
+FileName: Nop.Plugin.Payments.Sisow.dll
+Description: This plugin allows paying with Ideal with Sisow (Dutch)

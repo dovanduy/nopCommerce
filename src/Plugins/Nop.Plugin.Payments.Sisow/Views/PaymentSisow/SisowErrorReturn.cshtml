@@ -1,0 +1,58 @@
+﻿@model Nop.Plugin.Payments.Sisow.Models.PaymentFailedModel 
+@using Nop.Core.Domain.Orders
+@using Nop.Web.Models.Checkout
+@using Nop.Web.Models.Common
+@using Nop.Web.Framework.UI
+@using Nop.Web.Framework;
+@{
+    Layout = "~/Views/Shared/_ColumnsOne.cshtml";
+
+    //title
+    Html.AddTitleParts(T("PageTitle.Checkout").Text);
+}
+<div class="checkout-page">
+    @Html.Action("CheckoutProgress", "Checkout", new { step = CheckoutProgressStep.Complete })
+    <div class="clear">
+    </div>
+    <div class="page-title">
+        <h1>Er is een fout opgetreden</h1>
+    </div>
+    <div class="clear">
+    </div>
+    <div class="checkout-data">
+        <div class="order-completed">
+            <div class="body">
+                <b>                    
+                    Foutmelding:
+                </b>
+                <table width="80%" cellspacing="2" cellpadding="1" border="0">
+                    <tr>
+                        @Model.ErrorDescription
+                    </tr>
+                    <tr>
+                        &nbsp;
+                    </tr>
+                    <tr>
+                        <td>
+                            @Html.NopLabelFor(model => model.OrderId, false): @Model.OrderId
+                        </td>
+                    </tr>
+                    <tr>
+                        <td>
+                            @Html.NopLabelFor(model => model.Amount, false): @Model.Amount.ToString("c")
+                        </td>
+                    </tr>
+                </table>
+                
+                <p>
+                    <a href="@Url.RouteUrl("OrderDetails", new { orderID = @Model.OrderId})">@T("Checkout.PlacedOrderDetails")</a>
+                </p>
+            </div>
+            <div class="clear">
+            </div>
+            <div class="select-button">
+                <input type="submit" name="nextstep" value="@T("Checkout.Continue")" id="nextstep" class="orderprocessedcontinuebutton" onclick="setLocation('@Url.Action("index", "home")')" />
+            </div>
+        </div>
+    </div>
+</div>
