@@ -127,7 +127,9 @@
     <Compile Include="Models\ConfigurationModel.cs" />
     <Compile Include="Models\ErrorRequestResponse.cs" />
     <Compile Include="Models\PaymentFailedModel.cs" />
+    <Compile Include="Models\RefundInfoModel.cs" />
     <Compile Include="Models\PaymentInfoModel.cs" />
+    <Compile Include="Models\RefundResponseModel.cs" />
     <Compile Include="Models\TransactionRequestResponse.cs" />
     <Compile Include="SisowHelper.cs" />
     <Compile Include="SisowPaymentProcessor.cs" />

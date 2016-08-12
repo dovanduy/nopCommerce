@@ -1,5 +1,4 @@
 ﻿using Nop.Core.Configuration;
-using System;
 
 namespace Nop.Plugin.Payments.Sisow
 {
@@ -11,7 +10,7 @@ namespace Nop.Plugin.Payments.Sisow
         [System.ComponentModel.DataAnnotations.StringLength(512)]
         public string NormalReturnUrl { get; set; }
 
-
+        public string RefundReturnUrl { get; set; }
         [System.ComponentModel.DataAnnotations.StringLength(512)]
         public string NotifyUrl { get; set; }
 
@@ -23,7 +22,7 @@ namespace Nop.Plugin.Payments.Sisow
         public decimal AdditionalFee { get; set; }
 
         public decimal MinimumAmount { get; set; }
-        
+
         public bool TestMode { get; set; }
 
         public string DescriptionText { get; set; }

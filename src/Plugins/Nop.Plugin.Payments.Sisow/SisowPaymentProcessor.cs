@@ -4,6 +4,7 @@ using Nop.Core.Domain.Payments;
 using Nop.Core.Plugins;
 using Nop.Plugin.Payments.Sisow.Controllers;
 using Nop.Plugin.Payments.Sisow.Models;
+using Nop.Services.Common;
 using Nop.Services.Configuration;
 using Nop.Services.Orders;
 using Nop.Services.Payments;
@@ -31,6 +32,7 @@ namespace Nop.Plugin.Payments.Sisow
         private readonly IOrderService _orderService;
         private readonly IWebHelper _webHelper;
         private readonly HttpContextBase _httpContext;
+        private readonly IGenericAttributeService _genericAttributeService;
 
         #endregion
 
@@ -38,12 +40,14 @@ namespace Nop.Plugin.Payments.Sisow
 
         public SisowPaymentProcessor(SisowPaymentSettings sisowPaymentSettings,
                                             ISettingService settingService,
+                                            IGenericAttributeService genericAttributeService,
                                             HttpContextBase httpContext,
                                             IOrderService orderService,
                                             IWebHelper webHelper)
         {
             _sisowPaymentSettings = sisowPaymentSettings;
             _settingService = settingService;
+            _genericAttributeService = genericAttributeService;
             _orderService = orderService;
             _webHelper = webHelper;
             _httpContext = httpContext;
@@ -84,8 +88,8 @@ namespace Nop.Plugin.Payments.Sisow
         /// <param name="postProcessPaymentRequest">Payment info required for an order processing</param>
         public void PostProcessPayment(PostProcessPaymentRequest postProcessPaymentRequest)
         {
-            string sisowUrl = _sisowPaymentSettings.SisowUrl;
-            string entranceCode = Guid.NewGuid().ToString().Replace("-", "");
+            var sisowUrl = _sisowPaymentSettings.SisowUrl;
+            var entranceCode = Guid.NewGuid().ToString().Replace("-", "");
             var purchaseId = postProcessPaymentRequest.Order.Id.ToString();
             var description = postProcessPaymentRequest.Order.Id + " - " + postProcessPaymentRequest.Order.BillingAddress.LastName;
 
@@ -121,7 +125,7 @@ namespace Nop.Plugin.Payments.Sisow
 
             using (var client = new HttpClient())
             {
-                string sha1 = SisowHelper.GetSHA1(info.PurchaseId + info.EntranceCode + info.Amount + info.MerchantId + info.MerchantKey);
+                var sha1 = SisowHelper.GetSHA1(info.PurchaseId + info.EntranceCode + info.Amount + info.MerchantId + info.MerchantKey);
                 client.BaseAddress = new Uri(sisowUrl);
                 var content = new FormUrlEncodedContent(new[]
                 {
@@ -139,7 +143,7 @@ namespace Nop.Plugin.Payments.Sisow
                  });
                 var response = client.PostAsync("TransactionRequest", content).Result;
 
-                string resultContent = response.Content.ReadAsStringAsync().Result;
+                var resultContent = response.Content.ReadAsStringAsync().Result;
                 //Console.WriteLine(resultContent);
                 var storeUrl = _webHelper.GetStoreLocation(false);
                 if (response.IsSuccessStatusCode)
@@ -225,7 +229,82 @@ namespace Nop.Plugin.Payments.Sisow
         public RefundPaymentResult Refund(RefundPaymentRequest refundPaymentRequest)
         {
             var result = new RefundPaymentResult();
-            result.AddError("Refund method not supported");
+
+            var sisowUrl = _sisowPaymentSettings.SisowUrl;
+            var trxId = refundPaymentRequest.Order.AuthorizationTransactionCode;
+
+            var refundInfo = new RefundInfoModel
+            {
+                MerchantId = _sisowPaymentSettings.MerchantId,
+                AuthorizationTransactionCode = trxId,
+                RefundAmount = refundPaymentRequest.AmountToRefund,
+                ReturnRefundUrl = _sisowPaymentSettings.RefundReturnUrl
+            };
+
+            using (var client = new HttpClient())
+            {
+                var sha1 =
+                    SisowHelper.GetSHA1(refundInfo.AuthorizationTransactionCode + refundInfo.MerchantId +
+                                        _sisowPaymentSettings.MerchantKey);
+                client.BaseAddress = new Uri(sisowUrl);
+                var content = new FormUrlEncodedContent(new[]
+                {
+                    new KeyValuePair<string, string>("merchantid", refundInfo.MerchantId)
+                    , new KeyValuePair<string, string>("trxid", refundInfo.AuthorizationTransactionCode)
+                    ,
+                    new KeyValuePair<string, string>("amount",
+                        refundPaymentRequest.AmountToRefund.ToString(CultureInfo.InvariantCulture))
+                    , new KeyValuePair<string, string>("sha1", sha1)
+                    , new KeyValuePair<string, string>("refundurl", refundInfo.ReturnRefundUrl)
+                });
+                var response = client.PostAsync("RefundRequest", content).Result;
+                var resultContent = response.Content.ReadAsStringAsync().Result;
+                var storeUrl = _webHelper.GetStoreLocation(false);
+                if (response.IsSuccessStatusCode)
+                {
+                    if (resultContent.Contains("<?xml version"))
+                    {
+
+                        if (resultContent.Contains("refundresponse"))
+                        {
+                            var incomingXml = XElement.Parse(resultContent);
+                            var reader = new StringReader(incomingXml.ToString());
+
+                            var deserializer2 = new XmlSerializer(typeof(refundresponse));
+                            var xmlData2 = (refundresponse)deserializer2.Deserialize(reader);
+
+                            var calcSHA1 =
+                                SisowHelper.GetSHA1(xmlData2.refund.refundid +
+                                                    _sisowPaymentSettings.MerchantId + _sisowPaymentSettings.MerchantKey);
+                            if (xmlData2.signature.sha1 == calcSHA1)
+                            {
+                                result.NewPaymentStatus = (refundPaymentRequest.IsPartialRefund && refundPaymentRequest.Order.RefundedAmount
+                                    + refundPaymentRequest.AmountToRefund < refundPaymentRequest.Order.OrderTotal) ? PaymentStatus.PartiallyRefunded : PaymentStatus.Refunded;
+
+                                //set refund transaction id for preventing refund twice
+                                _genericAttributeService.SaveAttribute(refundPaymentRequest.Order, "RefundTransactionId", xmlData2.refund.refundid);
+                            }
+                            else
+                            {
+                                result.AddError("SHA1 value not valid.");
+                            }
+                        }
+                        else
+                        {
+                            result.AddError("Invalid response.");
+                        }
+                    }
+                    else
+                    {
+                        result.AddError("Response is not a XML.");
+                    }
+                }
+                else
+                {
+                    result.AddError("Response not successfull. StatusCode: " + response.StatusCode);
+                }
+            }
+
             return result;
         }
 
@@ -387,7 +466,7 @@ namespace Nop.Plugin.Payments.Sisow
         {
             get
             {
-                return false;
+                return true;
             }
         }
 
@@ -398,7 +477,7 @@ namespace Nop.Plugin.Payments.Sisow
         {
             get
             {
-                return false;
+                return true;
             }
         }
 

@@ -14,6 +14,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Web.Mvc;
+
 // ReSharper disable Mvc.ViewNotResolved
 
 namespace Nop.Plugin.Payments.Sisow.Controllers
@@ -183,8 +184,6 @@ namespace Nop.Plugin.Payments.Sisow.Controllers
             order.AuthorizationTransactionCode = trxid;
             if (sha1 != calcSHA1)
             {
-
-                _orderService.UpdateOrder(order);
                 errorStr = $"{source} - Payment for order {order.Id} failed!, Sha1Status: TA9997, TrxId: {trxid}, Ec: {ec}, Status: {status}";
                 _logger.Error(errorStr);
                 //order note
@@ -194,6 +193,7 @@ namespace Nop.Plugin.Payments.Sisow.Controllers
                     DisplayToCustomer = false,
                     CreatedOnUtc = DateTime.UtcNow
                 });
+                _orderService.UpdateOrder(order);
             }
 
             if (status == "Success")
@@ -204,8 +204,8 @@ namespace Nop.Plugin.Payments.Sisow.Controllers
                     order.AuthorizationTransactionResult = "Sisow OK";
 
                     //order.AmountPaid = order.OrderTotal;
-                    _orderService.UpdateOrder(order);
-                    _orderProcessingService.MarkOrderAsPaid(order);
+
+
                     //order note
                     order.OrderNotes.Add(new OrderNote
                     {
@@ -213,6 +213,8 @@ namespace Nop.Plugin.Payments.Sisow.Controllers
                         DisplayToCustomer = false,
                         CreatedOnUtc = DateTime.UtcNow
                     });
+                    _orderService.UpdateOrder(order);
+                    _orderProcessingService.MarkOrderAsPaid(order);
                 }
             }
             if (status == "Cancelled" || status == "Failure" || status == "Expired")
@@ -220,7 +222,7 @@ namespace Nop.Plugin.Payments.Sisow.Controllers
                 if (order.AuthorizationTransactionResult == null || order.AuthorizationTransactionResult.Trim() == "")
                 {
                     order.AuthorizationTransactionResult = "Sisow NOT OK";
-                    _orderService.UpdateOrder(order);
+
 
                     errorStr = $"{source} - Payment for order {order.Id} failed!, Status: {status}, TrxId: {trxid}, Ec: {ec}";
                     _logger.Error(errorStr);
@@ -231,8 +233,72 @@ namespace Nop.Plugin.Payments.Sisow.Controllers
                         DisplayToCustomer = false,
                         CreatedOnUtc = DateTime.UtcNow
                     });
+                    _orderService.UpdateOrder(order);
                 }
             }
+            return null;
+        }
+
+        public ActionResult SisowRefundReport(string trxid, string ec, string status, string sha1, bool? notify, bool? callback, string source = "Sisow Auto Refund Response")
+        {
+            string errorStr;
+
+            var processor = _paymentService.LoadPaymentMethodBySystemName("Payments.Sisow") as SisowPaymentProcessor;
+            if (processor == null ||
+                !processor.IsPaymentMethodActive(_paymentSettings) || !processor.PluginDescriptor.Installed)
+                throw new NopException("Sisow module cannot be loaded");
+
+            var order = _orderService.GetOrderByAuthorizationTransactionIdAndPaymentMethod(ec, "Payments.Sisow");
+
+            if (order == null)
+            {
+                _logger.Error($"Order niet gevonden. TrxId: {trxid}, Ec: {ec}, Status: {status}");
+                return null;
+            }
+            var calcSHA1 = SisowHelper.GetSHA1(trxid + ec + status + _sisowPaymentSettings.MerchantId + _sisowPaymentSettings.MerchantKey);
+
+            if (sha1 != calcSHA1)
+            {
+                errorStr = $"{source} - Refund for order {order.Id} failed!, Sha1Status: TA9997, TrxId: {trxid}, Ec: {ec}, Status: {status}";
+                _logger.Error(errorStr);
+                //order note
+                order.OrderNotes.Add(new OrderNote
+                {
+                    Note = errorStr,
+                    DisplayToCustomer = false,
+                    CreatedOnUtc = DateTime.UtcNow
+                });
+                _orderService.UpdateOrder(order);
+                //todo: Make correction in order ?
+            }
+            if (status == "Success")
+            {
+                // The order matches the XML message. 
+
+                //order note
+                order.OrderNotes.Add(new OrderNote
+                {
+                    Note = "refund successfull from Sisow",
+                    DisplayToCustomer = false,
+                    CreatedOnUtc = DateTime.UtcNow
+                });
+                _orderService.UpdateOrder(order);
+            }
+            if (status == "Cancelled" || status == "Failure" || status == "Expired")
+            {
+                errorStr = $"{source} - Refund for order {order.Id} failed!, Status: {status}, TrxId: {trxid}, Ec: {ec}";
+                _logger.Error(errorStr);
+                //order note
+                order.OrderNotes.Add(new OrderNote
+                {
+                    Note = errorStr,
+                    DisplayToCustomer = false,
+                    CreatedOnUtc = DateTime.UtcNow
+                });
+                _orderService.UpdateOrder(order);
+                //todo: Make correction in order ?
+            }
+            //if (order.GetAttribute<string>("RefundTransactionId") != trxid)
             return null;
         }
 
