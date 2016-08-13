@@ -1,6 +1,4 @@
-﻿using System;
-using System.Web.Routing;
-using Nop.Core;
+﻿using Nop.Core;
 using Nop.Core.Domain.Shipping;
 using Nop.Core.Plugins;
 using Nop.Plugin.Shipping.ByTotal.Data;
@@ -11,6 +9,9 @@ using Nop.Services.Localization;
 using Nop.Services.Logging;
 using Nop.Services.Shipping;
 using Nop.Services.Shipping.Tracking;
+using System;
+using System.Linq;
+using System.Web.Routing;
 
 namespace Nop.Plugin.Shipping.ByTotal
 {
@@ -91,7 +92,17 @@ namespace Nop.Plugin.Shipping.ByTotal
 
         #endregion Properties
 
-        #region Utilities
+        #region Utilities        
+        /// <summary>
+        /// Gets the minimum order amount for the shipping method
+        /// </summary>
+        /// <param name="shippingMethodId">The shipping method identifier</param>
+        /// <returns>the minimum for the shipping method</returns>
+        private decimal? GetMinimum(int shippingMethodId)
+        {
+            var shippingByTotalRecords = _shippingByTotalService.GetAllShippingByTotalRecords().Where(x => x.ShippingMethodId == shippingMethodId).ToList();
+            return !shippingByTotalRecords.Any() ? decimal.Zero : shippingByTotalRecords.Min(x => x.From);
+        }
 
         /// <summary>
         /// Gets the rate for the shipping method
@@ -198,6 +209,7 @@ namespace Nop.Plugin.Shipping.ByTotal
             var shippingMethods = _shippingService.GetAllShippingMethods(countryId);
             foreach (var shippingMethod in shippingMethods)
             {
+                var minAmount = GetMinimum(shippingMethod.Id);
                 decimal? rate = GetRate(subTotal, shippingMethod.Id, storeId, warehouseId, countryId, stateProvinceId, zipPostalCode);
                 if (rate.HasValue)
                 {
@@ -205,6 +217,12 @@ namespace Nop.Plugin.Shipping.ByTotal
                     shippingOption.Name = shippingMethod.GetLocalized(x => x.Name);
                     shippingOption.Description = shippingMethod.GetLocalized(x => x.Description);
                     shippingOption.Rate = rate.Value;
+                    shippingOption.Disabled = false;
+                    if (!(subTotal >= minAmount))
+                    {
+                        shippingOption.Disabled = true;
+                        shippingOption.ReasonDisabled = $"Deze keuze is niet mogelijk. Minimale orderbedrag voor de bezorgroute bedraagt {minAmount}";
+                    }
                     response.ShippingOptions.Add(shippingOption);
                 }
             }

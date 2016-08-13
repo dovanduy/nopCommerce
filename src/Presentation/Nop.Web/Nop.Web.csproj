@@ -325,6 +325,7 @@
     <Compile Include="Models\Checkout\CheckoutShippingAddressModel.cs" />
     <Compile Include="Models\Checkout\CheckoutProgressModel.cs" />
     <Compile Include="Models\Checkout\CheckoutBillingAddressModel.cs" />
+    <Compile Include="Models\Checkout\CheckoutShippingMethodModel.Custom.cs" />
     <Compile Include="Models\Checkout\CheckoutShippingMethodModel.cs" />
     <Compile Include="Models\Checkout\CheckoutPaymentMethodModel.cs" />
     <Compile Include="Models\Checkout\CheckoutPaymentInfoModel.cs" />
@@ -992,6 +993,8 @@
     <Content Include="Views\Product\CustomerProductReviews.cshtml" />
     <Content Include="Views\Vendor\Info.cshtml" />
     <Content Include="Views\Common\Logo.cshtml" />
+    <Content Include="Themes\DefaultClean\Views\Checkout\ShippingMethod.cshtml" />
+    <Content Include="Themes\DefaultClean\Views\Checkout\OpcShippingMethods.cshtml" />
   </ItemGroup>
   <ItemGroup>
     <Folder Include="Plugins\bin\" />
