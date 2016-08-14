@@ -1,7 +1,3 @@
-using System;
-using System.Collections.Generic;
-using System.Data;
-using System.Linq;
 using Nop.Core;
 using Nop.Core.Caching;
 using Nop.Core.Data;
@@ -19,6 +15,10 @@ using Nop.Services.Localization;
 using Nop.Services.Messages;
 using Nop.Services.Security;
 using Nop.Services.Stores;
+using System;
+using System.Collections.Generic;
+using System.Data;
+using System.Linq;
 
 namespace Nop.Services.Catalog
 {
@@ -39,6 +39,8 @@ namespace Nop.Services.Catalog
         /// Key pattern to clear cache
         /// </summary>
         private const string PRODUCTS_PATTERN_KEY = "Nop.product.";
+
+        private const string TIERPRICECATEGORY_ALL_KEY = "Nop.tierpricecategories.all";//CUSTOM
         #endregion
 
         #region Fields
@@ -47,6 +49,7 @@ namespace Nop.Services.Catalog
         private readonly IRepository<RelatedProduct> _relatedProductRepository;
         private readonly IRepository<CrossSellProduct> _crossSellProductRepository;
         private readonly IRepository<TierPrice> _tierPriceRepository;
+        private readonly IRepository<TierPriceCategory> _tierPriceCategoryRepository;//CUSTOM
         private readonly IRepository<LocalizedProperty> _localizedPropertyRepository;
         private readonly IRepository<AclRecord> _aclRepository;
         private readonly IRepository<StoreMapping> _storeMappingRepository;
@@ -108,22 +111,23 @@ namespace Nop.Services.Catalog
             IRepository<RelatedProduct> relatedProductRepository,
             IRepository<CrossSellProduct> crossSellProductRepository,
             IRepository<TierPrice> tierPriceRepository,
+            IRepository<TierPriceCategory> tierPriceCategoryRepository,//CUSTOM
             IRepository<ProductPicture> productPictureRepository,
             IRepository<LocalizedProperty> localizedPropertyRepository,
             IRepository<AclRecord> aclRepository,
             IRepository<StoreMapping> storeMappingRepository,
             IRepository<ProductSpecificationAttribute> productSpecificationAttributeRepository,
-            IRepository<ProductReview>  productReviewRepository,
+            IRepository<ProductReview> productReviewRepository,
             IRepository<ProductWarehouseInventory> productWarehouseInventoryRepository,
             IRepository<SpecificationAttributeOption> specificationAttributeOptionRepository,
             IProductAttributeService productAttributeService,
             IProductAttributeParser productAttributeParser,
             ILanguageService languageService,
             IWorkflowMessageService workflowMessageService,
-            IDataProvider dataProvider, 
+            IDataProvider dataProvider,
             IDbContext dbContext,
             IWorkContext workContext,
-            LocalizationSettings localizationSettings, 
+            LocalizationSettings localizationSettings,
             CommonSettings commonSettings,
             CatalogSettings catalogSettings,
             IEventPublisher eventPublisher,
@@ -135,6 +139,7 @@ namespace Nop.Services.Catalog
             this._relatedProductRepository = relatedProductRepository;
             this._crossSellProductRepository = crossSellProductRepository;
             this._tierPriceRepository = tierPriceRepository;
+            this._tierPriceCategoryRepository = tierPriceCategoryRepository;//CUSTOM
             this._productPictureRepository = productPictureRepository;
             this._localizedPropertyRepository = localizedPropertyRepository;
             this._aclRepository = aclRepository;
@@ -159,7 +164,7 @@ namespace Nop.Services.Catalog
         }
 
         #endregion
-        
+
         #region Methods
 
         #region Products
@@ -211,7 +216,7 @@ namespace Nop.Services.Catalog
             var products = query.ToList();
             return products;
         }
-        
+
         /// <summary>
         /// Gets product
         /// </summary>
@@ -221,7 +226,7 @@ namespace Nop.Services.Catalog
         {
             if (productId == 0)
                 return null;
-            
+
             string key = string.Format(PRODUCTS_BY_ID_KEY, productId);
             return _cacheManager.Get(key, () => _productRepository.GetById(productId));
         }
@@ -265,7 +270,7 @@ namespace Nop.Services.Catalog
 
             //clear cache
             _cacheManager.RemoveByPattern(PRODUCTS_PATTERN_KEY);
-            
+
             //event notification
             _eventPublisher.EntityInserted(product);
         }
@@ -422,7 +427,7 @@ namespace Nop.Services.Catalog
                 storeId, vendorId, warehouseId,
                 productType, visibleIndividuallyOnly, markedAsNewOnly, featuredProducts,
                 priceMin, priceMax, productTagId, keywords, searchDescriptions, searchManufacturerPartNumber, searchSku,
-                searchProductTags, languageId, filteredSpecs, 
+                searchProductTags, languageId, filteredSpecs,
                 orderBy, showHidden, overridePublished);
         }
 
@@ -507,7 +512,7 @@ namespace Nop.Services.Catalog
             }
 
             //validate "categoryIds" parameter
-            if (categoryIds !=null && categoryIds.Contains(0))
+            if (categoryIds != null && categoryIds.Contains(0))
                 categoryIds.Remove(0);
 
             //Access control list. Allowed customer roles
@@ -519,7 +524,7 @@ namespace Nop.Services.Catalog
                 //It's much faster than the LINQ implementation below 
 
                 #region Use stored procedure
-                
+
                 //pass category identifiers as comma-delimited string
                 string commaSeparatedCategoryIds = categoryIds == null ? "" : string.Join(",", categoryIds);
 
@@ -539,13 +544,13 @@ namespace Nop.Services.Catalog
                 //some databases don't support int.MaxValue
                 if (pageSize == int.MaxValue)
                     pageSize = int.MaxValue - 1;
-                
+
                 //prepare parameters
                 var pCategoryIds = _dataProvider.GetParameter();
                 pCategoryIds.ParameterName = "CategoryIds";
                 pCategoryIds.Value = (object)commaSeparatedCategoryIds ?? DBNull.Value;
                 pCategoryIds.DbType = DbType.String;
-                
+
                 var pManufacturerId = _dataProvider.GetParameter();
                 pManufacturerId.ParameterName = "ManufacturerId";
                 pManufacturerId.Value = manufacturerId;
@@ -595,7 +600,7 @@ namespace Nop.Services.Catalog
                 pPriceMin.ParameterName = "PriceMin";
                 pPriceMin.Value = priceMin.HasValue ? (object)priceMin.Value : DBNull.Value;
                 pPriceMin.DbType = DbType.Decimal;
-                
+
                 var pPriceMax = _dataProvider.GetParameter();
                 pPriceMax.ParameterName = "PriceMax";
                 pPriceMax.Value = priceMax.HasValue ? (object)priceMax.Value : DBNull.Value;
@@ -680,7 +685,7 @@ namespace Nop.Services.Catalog
                 pLoadFilterableSpecificationAttributeOptionIds.ParameterName = "LoadFilterableSpecificationAttributeOptionIds";
                 pLoadFilterableSpecificationAttributeOptionIds.Value = loadFilterableSpecificationAttributeOptionIds;
                 pLoadFilterableSpecificationAttributeOptionIds.DbType = DbType.Boolean;
-                
+
                 var pFilterableSpecificationAttributeOptionIds = _dataProvider.GetParameter();
                 pFilterableSpecificationAttributeOptionIds.ParameterName = "FilterableSpecificationAttributeOptionIds";
                 pFilterableSpecificationAttributeOptionIds.Direction = ParameterDirection.Output;
@@ -730,10 +735,10 @@ namespace Nop.Services.Catalog
                 if (loadFilterableSpecificationAttributeOptionIds &&
                     !string.IsNullOrWhiteSpace(filterableSpecificationAttributeOptionIdsStr))
                 {
-                     filterableSpecificationAttributeOptionIds = filterableSpecificationAttributeOptionIdsStr
-                        .Split(new[] {','}, StringSplitOptions.RemoveEmptyEntries)
-                        .Select(x => Convert.ToInt32(x.Trim()))
-                        .ToList();
+                    filterableSpecificationAttributeOptionIds = filterableSpecificationAttributeOptionIdsStr
+                       .Split(new[] { ',' }, StringSplitOptions.RemoveEmptyEntries)
+                       .Select(x => Convert.ToInt32(x.Trim()))
+                       .ToList();
                 }
                 //return products
                 int totalRecords = (pTotalRecords.Value != DBNull.Value) ? Convert.ToInt32(pTotalRecords.Value) : 0;
@@ -784,7 +789,7 @@ namespace Nop.Services.Catalog
                 }
                 if (productType.HasValue)
                 {
-                    var productTypeId = (int) productType.Value;
+                    var productTypeId = (int)productType.Value;
                     query = query.Where(p => p.ProductTypeId == productTypeId);
                 }
 
@@ -986,7 +991,7 @@ namespace Nop.Services.Catalog
                 else if (orderBy == ProductSortingEnum.Position && manufacturerId > 0)
                 {
                     //manufacturer position
-                    query = 
+                    query =
                         query.OrderBy(p => p.ProductManufacturers.FirstOrDefault(pm => pm.ManufacturerId == manufacturerId).DisplayOrder);
                 }
                 else if (orderBy == ProductSortingEnum.Position)
@@ -1104,7 +1109,7 @@ namespace Nop.Services.Catalog
 
             return products;
         }
-        
+
         /// <summary>
         /// Update product review totals
         /// </summary>
@@ -1115,7 +1120,7 @@ namespace Nop.Services.Catalog
                 throw new ArgumentNullException("product");
 
             int approvedRatingSum = 0;
-            int notApprovedRatingSum = 0; 
+            int notApprovedRatingSum = 0;
             int approvedTotalReviews = 0;
             int notApprovedTotalReviews = 0;
             var reviews = product.ProductReviews;
@@ -1124,7 +1129,7 @@ namespace Nop.Services.Catalog
                 if (pr.IsApproved)
                 {
                     approvedRatingSum += pr.Rating;
-                    approvedTotalReviews ++;
+                    approvedTotalReviews++;
                 }
                 else
                 {
@@ -1152,17 +1157,17 @@ namespace Nop.Services.Catalog
         {
             //Track inventory for product
             var query = from p in _productRepository.Table
-                         orderby p.MinStockQuantity
-                         where !p.Deleted &&
-                         p.ManageInventoryMethodId == (int)ManageInventoryMethod.ManageStock &&
-                         //ignore grouped products
-                         p.ProductTypeId != (int)ProductType.GroupedProduct &&
-                         p.MinStockQuantity >= (
-                            p.UseMultipleWarehouses ?
-                            p.ProductWarehouseInventory.Sum(pwi => pwi.StockQuantity - pwi.ReservedQuantity) : 
-                            p.StockQuantity) &&
-                         (vendorId == 0 || p.VendorId == vendorId)
-                         select p;
+                        orderby p.MinStockQuantity
+                        where !p.Deleted &&
+                        p.ManageInventoryMethodId == (int)ManageInventoryMethod.ManageStock &&
+                        //ignore grouped products
+                        p.ProductTypeId != (int)ProductType.GroupedProduct &&
+                        p.MinStockQuantity >= (
+                           p.UseMultipleWarehouses ?
+                           p.ProductWarehouseInventory.Sum(pwi => pwi.StockQuantity - pwi.ReservedQuantity) :
+                           p.StockQuantity) &&
+                        (vendorId == 0 || p.VendorId == vendorId)
+                        select p;
 
             return new PagedList<Product>(query, pageIndex, pageSize);
         }
@@ -1179,12 +1184,12 @@ namespace Nop.Services.Catalog
         {
             //Track inventory for product by product attributes
             var query = from p in _productRepository.Table
-                         from c in p.ProductAttributeCombinations
-                         where !p.Deleted &&
-                         p.ManageInventoryMethodId == (int)ManageInventoryMethod.ManageStockByAttributes &&
-                         c.StockQuantity <= 0 &&
-                         (vendorId == 0 || p.VendorId == vendorId)
-                         select c;
+                        from c in p.ProductAttributeCombinations
+                        where !p.Deleted &&
+                        p.ManageInventoryMethodId == (int)ManageInventoryMethod.ManageStockByAttributes &&
+                        c.StockQuantity <= 0 &&
+                        (vendorId == 0 || p.VendorId == vendorId)
+                        select c;
 
             return new PagedList<ProductAttributeCombination>(query, pageIndex, pageSize);
         }
@@ -1209,7 +1214,7 @@ namespace Nop.Services.Catalog
             var product = query.FirstOrDefault();
             return product;
         }
-        
+
         /// <summary>
         /// Gets a products by SKU array
         /// </summary>
@@ -1281,7 +1286,7 @@ namespace Nop.Services.Catalog
 
             if (quantityToChange == 0)
                 return;
-            
+
             if (product.ManageInventoryMethod == ManageInventoryMethod.ManageStock)
             {
                 //previous stock
@@ -1532,7 +1537,7 @@ namespace Nop.Services.Catalog
 
             if (shipmentItem == null)
                 throw new ArgumentNullException("shipmentItem");
-            
+
             //only products with "use multiple warehouses" are handled this way
             if (product.ManageInventoryMethod != ManageInventoryMethod.ManageStock)
                 return 0;
@@ -1608,7 +1613,7 @@ namespace Nop.Services.Catalog
         {
             if (relatedProductId == 0)
                 return null;
-            
+
             return _relatedProductRepository.GetById(relatedProductId);
         }
 
@@ -1772,9 +1777,30 @@ namespace Nop.Services.Catalog
             return result;
         }
         #endregion
-        
+
+        #region Tier price categories
+        //CUSTOM - Start
+        /// <summary>
+        /// Gets all stores
+        /// </summary>
+        /// <returns>Stores</returns>
+        public virtual IList<TierPriceCategory> GetAllPriceTierCategories()
+        {
+            string key = TIERPRICECATEGORY_ALL_KEY;
+            return _cacheManager.Get(key, () =>
+            {
+                var query = from s in _tierPriceCategoryRepository.Table
+                            orderby s.Id
+                            select s;
+                var categories = query.ToList();
+                return categories;
+            });
+        }
+        //CUSTOM - End
+        #endregion
+
         #region Tier prices
-        
+
         /// <summary>
         /// Deletes a tier price
         /// </summary>
@@ -1801,7 +1827,7 @@ namespace Nop.Services.Catalog
         {
             if (tierPriceId == 0)
                 return null;
-            
+
             return _tierPriceRepository.GetById(tierPriceId);
         }
 
@@ -1921,7 +1947,7 @@ namespace Nop.Services.Catalog
         /// </summary>
         /// <param name="productsIds">Products IDs</param>
         /// <returns>All picture identifiers grouped by product ID</returns>
-        public IDictionary<int, int[]> GetProductsImagesIds(int [] productsIds)
+        public IDictionary<int, int[]> GetProductsImagesIds(int[] productsIds)
         {
             return _productPictureRepository.Table.Where(p => productsIds.Contains(p.ProductId))
                 .GroupBy(p => p.ProductId).ToDictionary(p => p.Key, p => p.Select(p1 => p1.PictureId).ToArray());

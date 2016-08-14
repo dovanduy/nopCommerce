@@ -1,13 +1,13 @@
-﻿using System;
-using System.Collections.Generic;
-using System.ComponentModel.DataAnnotations;
-using System.Web.Mvc;
-using FluentValidation.Attributes;
+﻿using FluentValidation.Attributes;
 using Nop.Admin.Models.Settings;
 using Nop.Admin.Validators.Catalog;
 using Nop.Web.Framework;
 using Nop.Web.Framework.Localization;
 using Nop.Web.Framework.Mvc;
+using System;
+using System.Collections.Generic;
+using System.ComponentModel.DataAnnotations;
+using System.Web.Mvc;
 
 namespace Nop.Admin.Models.Catalog
 {
@@ -431,7 +431,7 @@ namespace Nop.Admin.Models.Catalog
 
         //product attributes
         public IList<SelectListItem> AvailableProductAttributes { get; set; }
-        
+
         //pictures
         public ProductPictureModel AddPictureModel { get; set; }
         public IList<ProductPictureModel> ProductPictureModels { get; set; }
@@ -493,7 +493,7 @@ namespace Nop.Admin.Models.Catalog
                 AvailableAttributes = new List<SelectListItem>();
                 AvailableOptions = new List<SelectListItem>();
             }
-            
+
             [NopResourceDisplayName("Admin.Catalog.Products.SpecificationAttributes.Fields.SpecificationAttribute")]
             public int SpecificationAttributeId { get; set; }
 
@@ -519,7 +519,7 @@ namespace Nop.Admin.Models.Catalog
             public IList<SelectListItem> AvailableAttributes { get; set; }
             public IList<SelectListItem> AvailableOptions { get; set; }
         }
-        
+
         public partial class ProductPictureModel : BaseNopEntityModel
         {
             public int ProductId { get; set; }
@@ -549,7 +549,7 @@ namespace Nop.Admin.Models.Catalog
 
             [NopResourceDisplayName("Admin.Catalog.Products.RelatedProducts.Fields.Product")]
             public string Product2Name { get; set; }
-            
+
             [NopResourceDisplayName("Admin.Catalog.Products.RelatedProducts.Fields.DisplayOrder")]
             public int DisplayOrder { get; set; }
         }
@@ -702,6 +702,10 @@ namespace Nop.Admin.Models.Catalog
 
             [NopResourceDisplayName("Admin.Catalog.Products.TierPrices.Fields.Price")]
             public decimal Price { get; set; }
+
+            [NopResourceDisplayName("Admin.Catalog.Products.TierPrices.Fields.TierPriceCategory")]
+            public string TierPriceCategory { get; set; }//CUSTOM
+            public int? TierPriceCategoryId { get; set; }//CUSTOM
         }
 
         public partial class ProductWarehouseInventoryModel : BaseNopModel
@@ -769,7 +773,7 @@ namespace Nop.Admin.Models.Catalog
             [NopResourceDisplayName("Admin.Catalog.Products.ProductAttributes.Attributes.ValidationRules.DefaultValue")]
             public string DefaultValue { get; set; }
             public string ValidationRulesString { get; set; }
-            
+
             //condition
             [NopResourceDisplayName("Admin.Catalog.Products.ProductAttributes.Attributes.Condition")]
             public bool ConditionAllowed { get; set; }
@@ -809,7 +813,7 @@ namespace Nop.Admin.Models.Catalog
             [NopResourceDisplayName("Admin.Catalog.Products.ProductAttributes.Attributes.Values.Fields.Name")]
             [AllowHtml]
             public string Name { get; set; }
-            
+
             [NopResourceDisplayName("Admin.Catalog.Products.ProductAttributes.Attributes.Values.Fields.ColorSquaresRgb")]
             [AllowHtml]
             public string ColorSquaresRgb { get; set; }
@@ -884,7 +888,7 @@ namespace Nop.Admin.Models.Catalog
                 public IList<SelectListItem> AvailableStores { get; set; }
                 public IList<SelectListItem> AvailableVendors { get; set; }
                 public IList<SelectListItem> AvailableProductTypes { get; set; }
-                
+
                 //vendor
                 public bool IsLoggedInAsVendor { get; set; }
 

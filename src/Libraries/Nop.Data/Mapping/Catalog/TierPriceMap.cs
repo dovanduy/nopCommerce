@@ -18,6 +18,12 @@ namespace Nop.Data.Mapping.Catalog
                 .WithMany()
                 .HasForeignKey(tp => tp.CustomerRoleId)
                 .WillCascadeOnDelete(true);
+
+
+            this.HasOptional(a => a.TierPriceCategory)//Custom
+                .WithMany()
+                .HasForeignKey(a => a.TierPriceCategoryId)
+                .WillCascadeOnDelete(false);
         }
     }
 }

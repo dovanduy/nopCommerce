@@ -1,23 +1,20 @@
-﻿using System;
-using System.Collections.Generic;
-using System.IO;
-using System.Linq;
-using System.Text;
-using System.Web;
-using System.Web.Mvc;
-using Nop.Admin.Extensions;
+﻿using Nop.Admin.Extensions;
 using Nop.Admin.Helpers;
 using Nop.Admin.Infrastructure.Cache;
 using Nop.Admin.Models.Catalog;
 using Nop.Admin.Models.Orders;
 using Nop.Core;
+using Nop.Core.Caching;
 using Nop.Core.Domain.Catalog;
 using Nop.Core.Domain.Directory;
 using Nop.Core.Domain.Discounts;
 using Nop.Core.Domain.Media;
 using Nop.Core.Domain.Orders;
+using Nop.Core.Domain.Vendors;
+using Nop.Services;
 using Nop.Services.Catalog;
 using Nop.Services.Common;
+using Nop.Services.Configuration;
 using Nop.Services.Customers;
 using Nop.Services.Directory;
 using Nop.Services.Discounts;
@@ -37,10 +34,13 @@ using Nop.Web.Framework;
 using Nop.Web.Framework.Controllers;
 using Nop.Web.Framework.Kendoui;
 using Nop.Web.Framework.Mvc;
-using Nop.Core.Caching;
-using Nop.Core.Domain.Vendors;
-using Nop.Services;
-using Nop.Services.Configuration;
+using System;
+using System.Collections.Generic;
+using System.IO;
+using System.Linq;
+using System.Text;
+using System.Web;
+using System.Web.Mvc;
 
 namespace Nop.Admin.Controllers
 {
@@ -3071,7 +3071,9 @@ namespace Nop.Admin.Controllers
                         ProductId = x.ProductId,
                         CustomerRoleId = x.CustomerRoleId.HasValue ? x.CustomerRoleId.Value : 0,
                         Quantity = x.Quantity,
-                        Price = x.Price
+                        Price = x.Price,
+                        TierPriceCategoryId = x.TierPriceCategoryId, //CUSTOM
+                        TierPriceCategory = (!x.TierPriceCategoryId.HasValue) ? string.Empty : x.TierPriceCategory.TierPriceCategoryDesc //CUSTOM
                     };
                 })
                 .ToList();
@@ -3105,7 +3107,8 @@ namespace Nop.Admin.Controllers
                 StoreId = model.StoreId,
                 CustomerRoleId = model.CustomerRoleId > 0 ? model.CustomerRoleId : (int?)null,
                 Quantity = model.Quantity,
-                Price = model.Price
+                Price = model.Price,
+                TierPriceCategoryId = model.TierPriceCategoryId > 0 ? model.TierPriceCategoryId : null//CUSTOM
             };
             _productService.InsertTierPrice(tierPrice);
 
@@ -3137,6 +3140,7 @@ namespace Nop.Admin.Controllers
             tierPrice.CustomerRoleId = model.CustomerRoleId > 0 ? model.CustomerRoleId : (int?)null;
             tierPrice.Quantity = model.Quantity;
             tierPrice.Price = model.Price;
+            tierPrice.TierPriceCategoryId = model.TierPriceCategoryId > 0 ? model.TierPriceCategoryId : null; //CUSTOM
             _productService.UpdateTierPrice(tierPrice);
 
             return new NullJsonResult();
@@ -4578,7 +4582,7 @@ namespace Nop.Admin.Controllers
             //vendors cannot manage these settings
             if (_workContext.CurrentVendor != null)
                 return RedirectToAction("List");
-            
+
             var productEditorSettings = _settingService.LoadSetting<ProductEditorSettings>();
             productEditorSettings = model.ProductEditorSettingsModel.ToEntity(productEditorSettings);
             _settingService.SaveSetting(productEditorSettings);

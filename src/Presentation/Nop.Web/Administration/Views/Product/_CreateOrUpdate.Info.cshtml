@@ -1163,6 +1163,8 @@
                                                     StoreId: { editable: true, type: "number" },
                                                     CustomerRole: { editable: true, type: "string" },
                                                     CustomerRoleId: { editable: true, type: "number" },
+                                                    TierPriceCategory: { editable: true, type: "string" },
+                                                    TierPriceCategoryId: { editable: true, type: "number" },
                                                     //ProductId: { editable: false, type: "number" },
                                                     Quantity: { editable: true, type: "number" },
                                                     Price: { editable: true, type: "number" },
@@ -1212,6 +1214,13 @@
                                             template: "#:CustomerRole#"
                                         },
                                         {
+                                            field: "TierPriceCategoryId",
+                                            title: "@T("Admin.Catalog.Products.TierPrices.Fields.TierPriceCategory")",
+                                            width: 250,
+                                            editor: tierPriceCategoryDropDownEditor,
+                                            template: "#:TierPriceCategory#"
+                                        },
+                                        {
                                             field: "Quantity",
                                             title: "@T("Admin.Catalog.Products.TierPrices.Fields.Quantity")",
                                             width: 150,
@@ -1250,6 +1259,27 @@
                             });
 
                             //local datasource
+
+                            var allTierCategories = [
+                                {
+                                    Id: 0,
+                                    Name: "@T("Admin.Configuration.Settings.AllSettings.Fields.StoreName.AllTierPriceCategories")"
+                            }
+                                @{
+                            var productService = EngineContext.Current.Resolve<IProductService>();
+                            var allTierCategories = productService.GetAllPriceTierCategories();
+                            }
+                                @foreach (var tierCategory in allTierCategories)
+                            {
+                                <text>
+                                            , {
+                                Id: @(tierCategory.Id),
+                                Name: "@(Html.Raw(HttpUtility.JavaScriptStringEncode(tierCategory.TierPriceCategoryDesc)))"
+                            }
+                            </text>
+                            }
+                            ];
+
                             var allStores = [
                                 {
                                     Id: 0,
@@ -1305,6 +1335,15 @@
                                     .kendoDropDownList({
                                         autoBind: false,
                                         dataSource: allCustomerRoles
+                                    });
+                            }
+
+                            function tierPriceCategoryDropDownEditor(container, options) {
+                                $('<input required data-text-field="Name" data-value-field="Id" data-bind="value:TierPriceCategoryId"/>')
+                                    .appendTo(container)
+                                    .kendoDropDownList({
+                                        autoBind: false,
+                                        dataSource: allTierCategories
                                     });
                             }
                         </script>
